@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+    --background: #fffef7;
+    --foreground: #1f1b16;
+    --card: #ffffff;
+    --card-foreground: #1f1b16;
+    --popover: #ffffff;
+    --popover-foreground: #1f1b16;
+    --primary: #f6b800;
+    --primary-foreground: #1a1508;
+    --secondary: #fff3bf;
+    --secondary-foreground: #1f1b16;
+    --muted: #f4f1e6;
+    --muted-foreground: #6f6655;
+    --accent: #ffe08a;
+    --accent-foreground: #1f1b16;
+    --destructive: #e45858;
+    --destructive-foreground: #fff6f6;
+    --border: #efe3c5;
+    --input: #efe3c5;
+    --ring: #f6b800;
+    --chart-1: #f6b800;
+    --chart-2: #ffe08a;
+    --chart-3: #d79b19;
+    --chart-4: #a4720a;
+    --chart-5: #3b2f1b;
+    --radius: 0.625rem;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #1f1b16;
+    --sidebar-primary: #f6b800;
+    --sidebar-primary-foreground: #1a1508;
+    --sidebar-accent: #fff3bf;
+    --sidebar-accent-foreground: #1f1b16;
+    --sidebar-border: #efe3c5;
+    --sidebar-ring: #f6b800;
+}
+
+.dark {
+    --background: #12100b;
+    --foreground: #fdf8e7;
+    --card: #18140d;
+    --card-foreground: #fdf8e7;
+    --popover: #18140d;
+    --popover-foreground: #fdf8e7;
+    --primary: #ffd95a;
+    --primary-foreground: #1c1506;
+    --secondary: #2a2517;
+    --secondary-foreground: #fdf8e7;
+    --muted: #272217;
+    --muted-foreground: #b8ad8e;
+    --accent: #3a311c;
+    --accent-foreground: #ffd95a;
+    --destructive: #f36c6c;
+    --destructive-foreground: #150808;
+    --border: #2f2713;
+    --input: #2f2713;
+    --ring: #ffd95a;
+    --chart-1: #ffd95a;
+    --chart-2: #e6b800;
+    --chart-3: #bf8a00;
+    --chart-4: #7a5b00;
+    --chart-5: #ffed9b;
+    --sidebar: #18140d;
+    --sidebar-foreground: #fdf8e7;
+    --sidebar-primary: #ffd95a;
+    --sidebar-primary-foreground: #1c1506;
+    --sidebar-accent: #2a2517;
+    --sidebar-accent-foreground: #fdf8e7;
+    --sidebar-border: #2f2713;
+    --sidebar-ring: #ffd95a;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
