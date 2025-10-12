@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { backupLogs, syncStatus } from '@/lib/sample-data';
-import { backupIndex } from '@/routes/admin';
+import { index as backupIndex } from '@/routes/backup';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { CheckCircle2, Cloud, Loader2, RefreshCw } from 'lucide-react';

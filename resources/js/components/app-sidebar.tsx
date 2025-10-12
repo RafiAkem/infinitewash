@@ -10,19 +10,17 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import {
-    accountsIndex,
-    adminSettingsIndex,
-    backupIndex,
-    cardReplacementIndex,
-    dashboard,
-    membersIndex,
-    membershipIndex,
-    reportsIndex,
-    rolesPermissionsIndex,
-    scanIndex,
-    statusCheckIndex,
-} from '@/routes/admin';
+import { dashboard } from '@/routes';
+import { index as accountsIndex } from '@/routes/accounts';
+import { index as backupIndex } from '@/routes/backup';
+import { index as cardReplacementIndex } from '@/routes/card-replacement';
+import { index as membersIndex } from '@/routes/members';
+import { index as membershipIndex } from '@/routes/membership';
+import { index as reportsIndex } from '@/routes/reports';
+import { index as rolesPermissionsIndex } from '@/routes/roles-permissions';
+import { index as scanIndex } from '@/routes/scan';
+import { index as statusCheckIndex } from '@/routes/status-check';
+import { admin as adminSettingsIndex } from '@/routes/settings';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {

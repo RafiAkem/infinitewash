@@ -11,7 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { packages } from '@/lib/sample-data';
-import { membersIndex } from '@/routes/admin';
+import { index as membersIndex } from '@/routes/members';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, CreditCard, UserRound } from 'lucide-react';

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
 import { auditLog, permissions as permissionsData, roles as rolesData } from '@/lib/sample-data';
-import { rolesPermissionsIndex } from '@/routes/admin';
+import { index as rolesPermissionsIndex } from '@/routes/roles-permissions';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Fragment, useMemo, useState } from 'react';

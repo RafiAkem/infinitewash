@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { members, packages } from '@/lib/sample-data';
-import { membershipIndex } from '@/routes/admin';
+import { index as membershipIndex } from '@/routes/membership';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { BarChart3, ClipboardPlus, Gauge, Info } from 'lucide-react';

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { members as membersData, packages } from '@/lib/sample-data';
-import { statusCheckIndex } from '@/routes/admin';
+import { index as statusCheckIndex } from '@/routes/status-check';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { CheckCircle2, Info, Search, XCircle } from 'lucide-react';

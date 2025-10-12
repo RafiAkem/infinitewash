@@ -17,7 +17,7 @@ import {
     todayVisits,
     visitsByDay,
 } from '@/lib/sample-data';
-import { reportsIndex } from '@/routes/admin';
+import { index as reportsIndex } from '@/routes/reports';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { CalendarRange, Download, PieChart, TrendingUp } from 'lucide-react';

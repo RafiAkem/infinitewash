@@ -12,7 +12,7 @@ import {
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import AppLayout from '@/layouts/app-layout';
 import { accounts as accountData, roles as roleData } from '@/lib/sample-data';
-import { accountsIndex } from '@/routes/admin';
+import { index as accountsIndex } from '@/routes/accounts';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { ChevronRight, Plus, Shield } from 'lucide-react';

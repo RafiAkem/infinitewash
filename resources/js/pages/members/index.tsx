@@ -14,7 +14,7 @@ import {
     members as membersData,
     packages as packageOptions,
 } from '@/lib/sample-data';
-import { membersCreate, membersShow } from '@/routes/admin';
+import { create as membersCreate, show as membersShow } from '@/routes/members';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { Download, Filter, Plus, Search } from 'lucide-react';

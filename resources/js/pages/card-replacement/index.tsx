@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { cardReplacementRequests, members } from '@/lib/sample-data';
-import { cardReplacementIndex } from '@/routes/admin';
+import { index as cardReplacementIndex } from '@/routes/card-replacement';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Check, Download, Upload, UserRoundSearch, X } from 'lucide-react';

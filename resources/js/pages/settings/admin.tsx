@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { adminSettingsIndex } from '@/routes/admin';
+import { admin as adminSettingsIndex } from '@/routes/settings';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Palette, ShieldAlert } from 'lucide-react';

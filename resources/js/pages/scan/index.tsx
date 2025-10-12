@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { scanHistory } from '@/lib/sample-data';
-import { scanIndex } from '@/routes/admin';
+import { index as scanIndex } from '@/routes/scan';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { CheckCircle2, History, RefreshCcw, ScanLine } from 'lucide-react';
