@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\MemberController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ScanController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -10,19 +13,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::get('members', function () {
-        return Inertia::render('members/index');
-    })->name('members.index');
-
-    Route::get('members/create', function () {
-        return Inertia::render('members/create');
-    })->name('members.create');
-
-    Route::get('members/{member}', function (string $member) {
-        return Inertia::render('members/show', [
-            'memberId' => $member,
-        ]);
-    })->name('members.show');
+    Route::get('members', [MemberController::class, 'index'])->name('members.index');
+    Route::get('members/create', [MemberController::class, 'create'])->name('members.create');
+    Route::post('members', [MemberController::class, 'store'])->name('members.store');
+    Route::delete('members', [MemberController::class, 'destroyMany'])->name('members.destroyMany');
+    Route::get('members/{member}', [MemberController::class, 'show'])->name('members.show');
 
     Route::get('membership', function () {
         return Inertia::render('membership/index');
@@ -32,17 +27,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('status-check/index');
     })->name('status-check.index');
 
-    Route::get('scan', function () {
-        return Inertia::render('scan/index');
-    })->name('scan.index');
+    Route::get('scan', [ScanController::class, 'index'])->name('scan.index');
+    Route::post('scan', [ScanController::class, 'store'])->name('scan.store');
 
     Route::get('card-replacement', function () {
         return Inertia::render('card-replacement/index');
     })->name('card-replacement.index');
 
-    Route::get('reports', function () {
-        return Inertia::render('reports/index');
-    })->name('reports.index');
+    Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
     Route::get('accounts', function () {
         return Inertia::render('accounts/index');

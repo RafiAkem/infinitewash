@@ -15,11 +15,14 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
-                    const href =
+                    const rawHref =
                         typeof item.href === 'string'
                             ? item.href
                             : item.href.url;
-                    const isActive = page.url.startsWith(href);
+
+                    const href = rawHref.startsWith('/') ? rawHref : `/${rawHref}`;
+                    const current = page.url.startsWith('/') ? page.url : `/${page.url}`;
+                    const isActive = current === href || current.startsWith(`${href}/`);
                     return (
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton

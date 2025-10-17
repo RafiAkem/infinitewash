@@ -10,23 +10,58 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import {
-    monthlyNewMembers,
-    packageDistribution,
-    reportsSummary,
-    todayVisits,
-    visitsByDay,
-} from '@/lib/sample-data';
 import { index as reportsIndex } from '@/routes/reports';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { CalendarRange, Download, PieChart, TrendingUp } from 'lucide-react';
 
+interface ReportSummary {
+    visitsToday: number;
+    activeMembers: number;
+    newMembersMonth: number;
+    vehiclesRegistered: number;
+}
+
+interface VisitBarDatum {
+    day: string;
+    value: number;
+}
+
+interface MonthlyDatum {
+    month: string;
+    value: number;
+}
+
+interface PackageSlice {
+    name: string;
+    percentage: number;
+}
+
+interface RecentVisitRow {
+    id: number;
+    time: string;
+    member: {
+        name: string;
+        code: string;
+    };
+    plate?: string | null;
+    status: 'allowed' | 'blocked';
+}
+
+interface ReportsPageProps {
+    summary: ReportSummary;
+    visitsByDay: VisitBarDatum[];
+    monthlyNewMembers: MonthlyDatum[];
+    packageDistribution: PackageSlice[];
+    recentVisits: RecentVisitRow[];
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Reports', href: reportsIndex() },
+    { title: 'Reports', href: reportsIndex().url },
 ];
 
 export default function ReportsPage() {
+    const { summary, visitsByDay, monthlyNewMembers, packageDistribution, recentVisits } = usePage<ReportsPageProps>().props;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Reports" />
@@ -64,7 +99,7 @@ export default function ReportsPage() {
                     <Card className="border-sidebar-border/70 bg-card/60 shadow-sm dark:border-sidebar-border">
                         <CardHeader>
                             <CardDescription>Total Visits</CardDescription>
-                            <CardTitle className="text-3xl font-semibold">{reportsSummary.visitsToday}</CardTitle>
+                            <CardTitle className="text-3xl font-semibold">{summary.visitsToday}</CardTitle>
                         </CardHeader>
                         <CardContent className="text-xs text-success">
                             +12% dibanding minggu lalu
@@ -73,7 +108,7 @@ export default function ReportsPage() {
                     <Card className="border-sidebar-border/70 bg-card/60 shadow-sm dark:border-sidebar-border">
                         <CardHeader>
                             <CardDescription>Active Members</CardDescription>
-                            <CardTitle className="text-3xl font-semibold">{reportsSummary.activeMembers}</CardTitle>
+                            <CardTitle className="text-3xl font-semibold">{summary.activeMembers}</CardTitle>
                         </CardHeader>
                         <CardContent className="text-xs text-muted-foreground">
                             Termasuk perpanjangan otomatis
@@ -82,7 +117,7 @@ export default function ReportsPage() {
                     <Card className="border-sidebar-border/70 bg-card/60 shadow-sm dark:border-sidebar-border">
                         <CardHeader>
                             <CardDescription>New Members (30 hari)</CardDescription>
-                            <CardTitle className="text-3xl font-semibold">{reportsSummary.newMembersMonth}</CardTitle>
+                            <CardTitle className="text-3xl font-semibold">{summary.newMembersMonth}</CardTitle>
                         </CardHeader>
                         <CardContent className="text-xs text-success">
                             +5 anggota dibanding periode sebelumnya
@@ -91,10 +126,10 @@ export default function ReportsPage() {
                     <Card className="border-sidebar-border/70 bg-card/60 shadow-sm dark:border-sidebar-border">
                         <CardHeader>
                             <CardDescription>Vehicles Registered</CardDescription>
-                            <CardTitle className="text-3xl font-semibold">{reportsSummary.vehiclesRegistered}</CardTitle>
+                            <CardTitle className="text-3xl font-semibold">{summary.vehiclesRegistered}</CardTitle>
                         </CardHeader>
                         <CardContent className="text-xs text-muted-foreground">
-                            {Math.round(reportsSummary.vehiclesRegistered / reportsSummary.activeMembers)} kendaraan per member
+                            {summary.activeMembers > 0 ? Math.round(summary.vehiclesRegistered / summary.activeMembers) : 0} kendaraan per member
                         </CardContent>
                     </Card>
                 </section>
@@ -192,19 +227,19 @@ export default function ReportsPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {todayVisits.map((visit) => (
+                                        {recentVisits.map((visit) => (
                                             <tr
                                                 key={visit.id}
                                                 className="border-t border-sidebar-border/60 transition hover:bg-muted/30 dark:border-sidebar-border"
                                             >
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium text-foreground">{visit.memberName}</span>
-                                                        <span className="text-xs text-muted-foreground">{visit.memberId}</span>
+                                                        <span className="font-medium text-foreground">{visit.member.name}</span>
+                                                        <span className="text-xs text-muted-foreground">{visit.member.code}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">{visit.time}</td>
-                                                <td className="px-4 py-3">{visit.plate}</td>
+                                                <td className="px-4 py-3">{visit.plate ?? '-'}</td>
                                                 <td className="px-4 py-3">
                                                     <Badge
                                                         variant="outline"

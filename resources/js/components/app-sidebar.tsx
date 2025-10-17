@@ -48,12 +48,12 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Members',
-        href: membersIndex(),
+        href: membersIndex().url,
         icon: Users,
     },
     {
         title: 'Membership',
-        href: membershipIndex(),
+        href: membershipIndex().url,
         icon: CreditCard,
     },
     {

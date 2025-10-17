@@ -10,10 +10,9 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
-import { packages } from '@/lib/sample-data';
-import { index as membersIndex } from '@/routes/members';
+import { index as membersIndex, store as membersStore } from '@/routes/members';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, CreditCard, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -38,19 +37,56 @@ const steps = [
     },
 ];
 
+interface PackageOption {
+    id: string;
+    name: string;
+    price: number;
+    quota: number;
+}
+
+interface CreateMemberPageProps {
+    packages: PackageOption[];
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Members', href: membersIndex() },
+    { title: 'Members', href: membersIndex().url },
     { title: 'New Member', href: '/members/create' },
 ];
 
-export default function NewMemberWizard() {
+export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
     const [currentStep, setCurrentStep] = useState(0);
-    const [selectedPackage, setSelectedPackage] = useState(packages[0].id);
+    const { data, setData, post, processing } = useForm({
+        name: '',
+        phone: '',
+        address: '',
+        card_uid: '',
+        package: packages[0]?.id ?? '299k',
+        vehicles: [{ plate: '', color: '' }],
+        membership: {
+            valid_from: new Date().toISOString().slice(0, 10),
+            valid_to: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().slice(0, 10),
+        },
+    });
 
     const quota = useMemo(() => {
-        const pkg = packages.find((item) => item.id === selectedPackage);
+        const pkg = packages.find((item) => item.id === data.package);
         return pkg?.quota ?? 1;
-    }, [selectedPackage]);
+    }, [packages, data.package]);
+
+    const updateVehicle = (index: number, key: 'plate' | 'color', value: string) => {
+        const vehicles = [...data.vehicles];
+        if (!vehicles[index]) {
+            vehicles[index] = { plate: '', color: '' };
+        }
+        vehicles[index] = { ...vehicles[index], [key]: value };
+        setData('vehicles', vehicles);
+    };
+
+    const handleSubmit = () => {
+        post(membersStore().url, {
+            preserveScroll: true,
+        });
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -67,7 +103,7 @@ export default function NewMemberWizard() {
                             </p>
                         </div>
                         <Button asChild variant="outline" className="gap-2">
-                            <Link href={membersIndex()} prefetch>
+                            <Link href={membersIndex().url} prefetch>
                                 <ArrowLeft className="size-4" /> Kembali ke daftar
                             </Link>
                         </Button>
@@ -121,15 +157,30 @@ export default function NewMemberWizard() {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="name">Nama Lengkap</Label>
-                                        <Input id="name" placeholder="Contoh: Agus Pratama" />
+                                        <Input
+                                            id="name"
+                                            placeholder="Contoh: Agus Pratama"
+                                            value={data.name}
+                                            onChange={(event) => setData('name', event.target.value)}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="phone">Nomor Telepon</Label>
-                                        <Input id="phone" placeholder="+62 812-xxxx-xxxx" />
+                                        <Input
+                                            id="phone"
+                                            placeholder="+62 812-xxxx-xxxx"
+                                            value={data.phone}
+                                            onChange={(event) => setData('phone', event.target.value)}
+                                        />
                                     </div>
                                     <div className="md:col-span-2 flex flex-col gap-2">
                                         <Label htmlFor="address">Alamat</Label>
-                                        <Input id="address" placeholder="Tuliskan alamat lengkap" />
+                                        <Input
+                                            id="address"
+                                            placeholder="Tuliskan alamat lengkap"
+                                            value={data.address}
+                                            onChange={(event) => setData('address', event.target.value)}
+                                        />
                                     </div>
                                 </div>
                             </section>
@@ -147,8 +198,8 @@ export default function NewMemberWizard() {
                                     <div className="flex flex-col gap-2 sm:col-span-2">
                                         <Label>Paket Membership</Label>
                                         <Select
-                                            value={selectedPackage}
-                                            onValueChange={setSelectedPackage}
+                                            value={data.package}
+                                            onValueChange={(value) => setData('package', value)}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -164,7 +215,7 @@ export default function NewMemberWizard() {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label>Kuota Kendaraan</Label>
-                                        <Input value={quota} readOnly />
+                                            <Input value={quota} readOnly />
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -182,11 +233,18 @@ export default function NewMemberWizard() {
                                                     <Input
                                                         id={`plate-${index}`}
                                                         placeholder="D 1234 ABC"
+                                                        value={data.vehicles[index]?.plate ?? ''}
+                                                        onChange={(event) => updateVehicle(index, 'plate', event.target.value)}
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-2">
                                                     <Label htmlFor={`color-${index}`}>Warna</Label>
-                                                    <Input id={`color-${index}`} placeholder="Hitam" />
+                                                    <Input
+                                                        id={`color-${index}`}
+                                                        placeholder="Hitam"
+                                                        value={data.vehicles[index]?.color ?? ''}
+                                                        onChange={(event) => updateVehicle(index, 'color', event.target.value)}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -206,21 +264,46 @@ export default function NewMemberWizard() {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="card-uid">Card UID</Label>
-                                        <Input id="card-uid" placeholder="Scan atau input manual" />
+                                        <Input
+                                            id="card-uid"
+                                            placeholder="Scan atau input manual"
+                                            value={data.card_uid}
+                                            onChange={(event) => setData('card_uid', event.target.value)}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="valid-from">Aktif Mulai</Label>
-                                        <Input id="valid-from" type="date" defaultValue="2025-01-03" />
+                                        <Input
+                                            id="valid-from"
+                                            type="date"
+                                            value={data.membership.valid_from}
+                                            onChange={(event) =>
+                                                setData('membership', {
+                                                    ...data.membership,
+                                                    valid_from: event.target.value,
+                                                })
+                                            }
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="valid-to">Aktif Sampai</Label>
-                                        <Input id="valid-to" type="date" defaultValue="2026-01-02" />
+                                        <Input
+                                            id="valid-to"
+                                            type="date"
+                                            value={data.membership.valid_to}
+                                            onChange={(event) =>
+                                                setData('membership', {
+                                                    ...data.membership,
+                                                    valid_to: event.target.value,
+                                                })
+                                            }
+                                        />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border border-sidebar-border/60 bg-muted/30 p-4 text-sm leading-relaxed text-muted-foreground dark:border-sidebar-border">
                                     <p className="font-medium text-foreground">Ringkasan Data</p>
                                     <ul className="mt-2 grid gap-1">
-                                        <li>• Paket: {packages.find((pkg) => pkg.id === selectedPackage)?.name}</li>
+                                        <li>• Paket: {packages.find((pkg) => pkg.id === data.package)?.name}</li>
                                         <li>• Kuota Kendaraan: {quota}</li>
                                         <li>• Status awal: Aktif</li>
                                     </ul>
@@ -263,7 +346,9 @@ export default function NewMemberWizard() {
                                         Lanjut
                                     </Button>
                                 ) : (
-                                    <Button className="w-full">Buat Member</Button>
+                                    <Button className="w-full" onClick={handleSubmit} disabled={processing}>
+                                        {processing ? 'Menyimpan...' : 'Buat Member'}
+                                    </Button>
                                 )}
                             </div>
                         </div>

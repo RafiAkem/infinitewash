@@ -2,11 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { members as membersData, packages } from '@/lib/sample-data';
 import { index as cardReplacementIndex } from '@/routes/card-replacement';
-import { index as membersIndex } from '@/routes/members';
+import { index as membersIndex, show as membersShow } from '@/routes/members';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, Clock, CreditCard, IdCard, MapPin, Phone, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -25,27 +24,83 @@ const tabs = [
     { key: 'visits', label: 'Riwayat Kunjungan' },
 ];
 
-const getDaysLeft = (expiresAt: string) => {
+const getDaysLeft = (expiresAt?: string | null) => {
+    if (!expiresAt) {
+        return 0;
+    }
     const today = new Date();
     const expiry = new Date(expiresAt);
     const diff = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return diff;
 };
 
+const formatDate = (value?: string | null) => {
+    if (!value) {
+        return '—';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) {
+        return '—';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
 export default function MemberDetail() {
-    const page = usePage<{ memberId: string }>();
+    const { member, vehicles, memberships, recentVisits } = usePage<{
+        member: {
+            id: string;
+            member_code: string;
+            name: string;
+            phone: string;
+            address: string;
+            package: string;
+            status: MemberStatus;
+            card_uid: string;
+            joined_at?: string | null;
+            expires_at?: string | null;
+        };
+        vehicles: { id: number; plate: string; color: string | null }[];
+        memberships: { id: number; valid_from: string; valid_to: string; status: string }[];
+        recentVisits: { id: number; visit_date: string; visit_time: string; status: string }[];
+    }>().props;
+
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Members', href: membersIndex() },
-        { title: page.props.memberId ?? 'Detail', href: `/members/${page.props.memberId ?? ''}` },
+        { title: 'Members', href: membersIndex().url },
+        { title: member.name, href: membersShow(member.id).url },
     ];
 
-    const member = useMemo(() => {
-        return membersData.find((item) => item.id === page.props.memberId) ?? membersData[0];
-    }, [page.props.memberId]);
-
     const [activeTab, setActiveTab] = useState(tabs[0].key);
-    const daysLeft = getDaysLeft(member.expiresAt);
-    const packageInfo = packages.find((pkg) => pkg.id === member.packageId);
+    const daysLeft = getDaysLeft(member.expires_at ?? undefined);
+    const packageInfo = { name: member.package, quota: vehicles.length };
+    const joinedAtFormatted = useMemo(() => formatDateTime(member.joined_at), [member.joined_at]);
+    const expiresAtFormatted = useMemo(() => formatDateTime(member.expires_at), [member.expires_at]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -59,7 +114,7 @@ export default function MemberDetail() {
                                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                                         {member.name}
                                     </h1>
-                                    <Badge variant="outline">{member.id}</Badge>
+                                    <Badge variant="outline">{member.member_code}</Badge>
                                     <Badge
                                         variant="outline"
                                         className={statusCopy[member.status as MemberStatus]?.className}
@@ -69,17 +124,24 @@ export default function MemberDetail() {
                                 </div>
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                                     <span className="inline-flex items-center gap-2">
-                                        <CreditCard className="size-4" /> Paket {packageInfo?.name}
+                                        <CreditCard className="size-4" /> Paket {packageInfo.name}
                                     </span>
                                     <span className="inline-flex items-center gap-2">
-                                        <Calendar className="size-4" /> Bergabung {member.joinedAt}
+                                        <Calendar className="size-4" /> Bergabung {joinedAtFormatted}
                                     </span>
                                     <span className="inline-flex items-center gap-2">
-                                        <Clock className="size-4" /> Berakhir {member.expiresAt}
+                                        <Clock className="size-4" /> Berakhir {expiresAtFormatted}
                                     </span>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row">
+                                <Button
+                                    variant="outline"
+                                    className="gap-2"
+                                    onClick={() => router.visit(membersIndex().url)}
+                                >
+                                    ← Kembali ke Daftar
+                                </Button>
                                 <Button asChild variant="outline" className="gap-2">
                                     <Link href={cardReplacementIndex()} prefetch>
                                         <IdCard className="size-4" /> Request Penggantian Kartu
@@ -106,7 +168,7 @@ export default function MemberDetail() {
                                 </span>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                                <span className="font-medium text-foreground">Card UID:</span> {member.cardUid}
+                                <span className="font-medium text-foreground">Card UID:</span> {member.card_uid}
                             </div>
                         </div>
                         <div>
@@ -152,7 +214,7 @@ export default function MemberDetail() {
 
                 {activeTab === 'vehicles' && (
                     <div className="grid gap-4 md:grid-cols-2">
-                        {member.vehicles.map((vehicle, index) => (
+                        {vehicles.map((vehicle, index) => (
                             <Card
                                 key={vehicle.plate}
                                 className="border-sidebar-border/70 bg-card/60 shadow-sm transition hover:border-primary/60 dark:border-sidebar-border"
@@ -178,20 +240,20 @@ export default function MemberDetail() {
                         <CardContent className="grid gap-6 p-6">
                             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                                 <span>
-                                    <strong>Aktif sejak:</strong> {member.joinedAt}
+                                    <strong>Aktif sejak:</strong> {joinedAtFormatted}
                                 </span>
                                 <span>
-                                    <strong>Berlaku hingga:</strong> {member.expiresAt}
+                                    <strong>Berlaku hingga:</strong> {expiresAtFormatted}
                                 </span>
                                 <span>
-                                    <strong>Paket:</strong> {packageInfo?.name}
+                                    <strong>Paket:</strong> {packageInfo.name}
                                 </span>
                                 <span>
-                                    <strong>Kuota Kendaraan:</strong> {packageInfo?.quota}
+                                    <strong>Kuota Kendaraan:</strong> {packageInfo.quota}
                                 </span>
                             </div>
                             <div className="rounded-lg border border-dashed border-sidebar-border/60 p-4 text-sm text-muted-foreground dark:border-sidebar-border">
-                                Catatan: Paket {packageInfo?.name} memungkinkan {packageInfo?.quota} kendaraan aktif sekaligus. Gunakan tombol perpanjang untuk memperbaharui masa berlaku.
+                                Catatan: Paket {packageInfo.name} memungkinkan {packageInfo.quota} kendaraan aktif sekaligus. Gunakan tombol perpanjang untuk memperbaharui masa berlaku.
                             </div>
                         </CardContent>
                     </Card>
@@ -206,19 +268,17 @@ export default function MemberDetail() {
                                         <tr>
                                             <th className="px-4 py-3">Tanggal</th>
                                             <th className="px-4 py-3">Jam</th>
-                                            <th className="px-4 py-3">Plat</th>
                                             <th className="px-4 py-3">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {member.visits.map((visit) => (
+                                        {recentVisits.map((visit) => (
                                             <tr
-                                                key={`${visit.date}-${visit.time}`}
+                                                key={visit.id}
                                                 className="border-t border-sidebar-border/60 text-foreground transition hover:bg-muted/30 dark:border-sidebar-border"
                                             >
-                                                <td className="px-4 py-3">{visit.date}</td>
-                                                <td className="px-4 py-3">{visit.time}</td>
-                                                <td className="px-4 py-3">{visit.plate}</td>
+                                                <td className="px-4 py-3">{visit.visit_date}</td>
+                                                <td className="px-4 py-3">{visit.visit_time}</td>
                                                 <td className="px-4 py-3">
                                                     <Badge
                                                         variant="outline"
