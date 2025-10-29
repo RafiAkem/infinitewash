@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Member;
 use App\Models\Membership;
+use App\Models\PublicHoliday;
 use App\Models\Vehicle;
 use App\Models\Visit;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,6 +38,7 @@ class ScanController extends Controller
                     'name' => $visit->member->name,
                     'package' => $visit->member->package,
                     'status' => $visit->member->status,
+                    'phone' => $visit->member->phone,
                 ],
                 'plate' => optional($visit->vehicle)->plate,
                 'status' => $visit->status,
@@ -44,18 +46,21 @@ class ScanController extends Controller
 
         $lastScan = Visit::query()
             ->latest('created_at')
-            ->with('member')
+            ->with(['member', 'vehicle'])
             ->first();
 
         return Inertia::render('scan/index', [
             'todayVisits' => $visits,
             'lastScan' => $lastScan ? [
                 'status' => $lastScan->status,
+                'time' => $lastScan->visit_time,
+                'plate' => optional($lastScan->vehicle)->plate,
                 'member' => [
                     'id' => $lastScan->member->id,
                     'name' => $lastScan->member->name,
                     'package' => $lastScan->member->package,
                     'status' => $lastScan->member->status,
+                    'phone' => $lastScan->member->phone,
                 ],
             ] : null,
         ]);
@@ -66,44 +71,208 @@ class ScanController extends Controller
         Gate::authorize('scan.use');
 
         $validated = $request->validate([
-            'card_uid' => ['required', 'string'],
+            'card_uid' => ['nullable', 'digits:9'],
+            'member_id' => ['nullable', 'uuid', 'exists:members,id'],
+            'via' => ['nullable', 'in:card,phone'],
         ]);
-        $member = Member::query()
-            ->whereRaw('LOWER(card_uid) = ?', [Str::lower($validated['card_uid'])])
-            ->with(['vehicles', 'memberships' => fn ($query) => $query->orderByDesc('valid_to')])
-            ->first();
 
-        if (! $member) {
-            return Redirect::back()->with('scan.result', [
-                'status' => 'blocked',
-                'reason' => 'Member not found',
+        if (! $validated['card_uid'] && ! $validated['member_id']) {
+            return Redirect::back()->with('scan', [
+                'result' => [
+                    'status' => 'blocked',
+                    'reason' => 'Card UID atau nomor member wajib diisi.',
+                ],
             ]);
         }
 
+        $memberQuery = Member::query()
+            ->with(['vehicles', 'memberships' => fn ($query) => $query->orderByDesc('valid_to')]);
+
+        if ($validated['member_id']) {
+            $memberQuery->where('id', $validated['member_id']);
+        } else {
+            $memberQuery->where('card_uid', $validated['card_uid']);
+        }
+
+        $member = $memberQuery->first();
+
+        if (! $member) {
+            return Redirect::back()->with('scan', [
+                'result' => [
+                    'status' => 'blocked',
+                    'reason' => 'Member tidak ditemukan.',
+                ],
+            ]);
+        }
+
+        $now = CarbonImmutable::now();
+        $today = $now->toDateString();
+
+        if ($now->isWeekend()) {
+            return $this->blockedResponse($member, 'Scan tidak tersedia pada akhir pekan.');
+        }
+
+        if ($this->isPublicHoliday($now)) {
+            return $this->blockedResponse($member, 'Scan ditutup pada tanggal merah.');
+        }
+
+        if ($member->status !== 'active') {
+            return $this->blockedResponse($member, 'Status member tidak aktif.');
+        }
+
         $activeMembership = $member->memberships
-            ->first(fn (Membership $membership) => $membership->status === 'active' && $membership->valid_to->isFuture());
+            ->first(function (Membership $membership) use ($now) {
+                if ($membership->status !== 'active') {
+                    return false;
+                }
+
+                $validTo = CarbonImmutable::make($membership->valid_to)->endOfDay();
+
+                return $validTo->greaterThanOrEqualTo($now);
+            });
+
+        if (! $activeMembership) {
+            return $this->blockedResponse($member, 'Membership tidak aktif atau sudah kedaluwarsa.');
+        }
+
+        $alreadyScanned = Visit::query()
+            ->where('member_id', $member->id)
+            ->whereDate('visit_date', $today)
+            ->exists();
+
+        if ($alreadyScanned) {
+            return $this->blockedResponse($member, 'Member sudah melakukan scan hari ini.');
+        }
 
         $vehicle = $member->vehicles->first();
-        $status = $activeMembership ? 'allowed' : 'blocked';
 
         Visit::create([
             'member_id' => $member->id,
             'vehicle_id' => $vehicle?->id,
-            'visit_date' => now()->toDateString(),
-            'visit_time' => now()->toTimeString(),
-            'status' => $status,
+            'visit_date' => $today,
+            'visit_time' => $now->toTimeString(),
+            'status' => 'allowed',
         ]);
 
-        return Redirect::back()->with('scan.result', [
-            'status' => $status,
-            'member' => [
-                'id' => $member->id,
-                'name' => $member->name,
-                'package' => $member->package,
-                'status' => $member->status,
-                'vehicle' => $vehicle?->plate,
+        return Redirect::back()->with('scan', [
+            'result' => [
+                'status' => 'allowed',
+                'member' => $this->formatScanMember($member, $vehicle),
+                'reason' => null,
             ],
-            'reason' => $status === 'allowed' ? null : 'Membership inactive',
         ]);
+    }
+
+    public function lookup(Request $request): JsonResponse
+    {
+        Gate::authorize('scan.use');
+
+        $validated = $request->validate([
+            'phone' => ['required', 'string'],
+        ]);
+
+        $normalizedPhone = preg_replace('/\D+/', '', $validated['phone']);
+        $variants = array_values(array_filter(array_unique(
+            array_merge(
+                [$normalizedPhone],
+                $normalizedPhone !== ''
+                    ? [$this->prependCountryCode($normalizedPhone), $this->stripCountryCode($normalizedPhone)]
+                    : []
+            )
+        ), fn ($value) => $value !== ''));
+
+        $replaceExpression = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', ''), '(', ''), ')', '')";
+
+        $member = null;
+
+        if ($variants !== []) {
+            $member = Member::query()
+                ->with(['vehicles', 'memberships' => fn ($query) => $query->orderByDesc('valid_to')])
+                ->where(function ($query) use ($variants, $replaceExpression) {
+                    foreach ($variants as $index => $variant) {
+                        if ($index === 0) {
+                            $query->whereRaw("{$replaceExpression} = ?", [$variant]);
+                        } else {
+                            $query->orWhereRaw("{$replaceExpression} = ?", [$variant]);
+                        }
+                    }
+                })
+                ->first();
+        }
+
+        if (! $member) {
+            $member = Member::query()
+                ->with(['vehicles', 'memberships' => fn ($query) => $query->orderByDesc('valid_to')])
+                ->where(function ($query) use ($validated, $normalizedPhone) {
+                    $query->where('phone', 'like', '%' . $validated['phone'] . '%')
+                        ->orWhere('phone', 'like', '%' . $normalizedPhone . '%');
+                })
+                ->first();
+        }
+
+        if (! $member) {
+            return response()->json([
+                'message' => 'Member tidak ditemukan.',
+            ], 404);
+        }
+
+        $vehicle = $member->vehicles->first();
+
+        return response()->json([
+            'member' => $this->formatScanMember($member, $vehicle),
+            'id' => $member->id,
+        ]);
+    }
+
+    private function blockedResponse(Member $member, string $reason): RedirectResponse
+    {
+        $vehicle = $member->vehicles->first();
+
+        return Redirect::back()->with('scan', [
+            'result' => [
+                'status' => 'blocked',
+                'member' => $this->formatScanMember($member, $vehicle),
+                'reason' => $reason,
+            ],
+        ]);
+    }
+
+    private function formatScanMember(Member $member, ?Vehicle $vehicle): array
+    {
+        return [
+            'id' => $member->id,
+            'name' => $member->name,
+            'package' => $member->package,
+            'status' => $member->status,
+            'phone' => $member->phone,
+            'vehicle' => $vehicle?->plate,
+        ];
+    }
+
+    private function isPublicHoliday(CarbonImmutable $date): bool
+    {
+        return PublicHoliday::query()
+            ->whereDate('holiday_date', $date->toDateString())
+            ->exists();
+    }
+
+    private function prependCountryCode(string $digits): string
+    {
+        if (str_starts_with($digits, '62')) {
+            return $digits;
+        }
+
+        $trimmed = ltrim($digits, '0');
+
+        return $trimmed === '' ? $digits : '62' . $trimmed;
+    }
+
+    private function stripCountryCode(string $digits): string
+    {
+        if (str_starts_with($digits, '62')) {
+            return '0' . substr($digits, 2);
+        }
+
+        return $digits;
     }
 }

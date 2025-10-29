@@ -43,7 +43,7 @@ export default function StatusCheck() {
                             </div>
                         </div>
                         <div className="flex flex-1 flex-col gap-2">
-                            <Input placeholder="atau masukkan nomor telepon (+62)" />
+                            <Input placeholder="atau masukkan nomor telepon (08xxxxxxxxxx)" />
                         </div>
                         <Button className="gap-2">Cek Status</Button>
                     </CardContent>

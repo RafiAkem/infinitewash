@@ -151,7 +151,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                 <div>
                                     <h2 className="text-lg font-semibold">Data Member</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        Gunakan format nomor telepon Indonesia (+62) dan alamat lengkap.
+                                        Gunakan format nomor telepon lokal (08xxxxxxxxxx) dan alamat lengkap.
                                     </p>
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-2">
@@ -168,7 +168,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                         <Label htmlFor="phone">Nomor Telepon</Label>
                                         <Input
                                             id="phone"
-                                            placeholder="+62 812-xxxx-xxxx"
+                                            placeholder="0812-xxxx-xxxx"
                                             value={data.phone}
                                             onChange={(event) => setData('phone', event.target.value)}
                                         />
@@ -266,9 +266,11 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                         <Label htmlFor="card-uid">Card UID</Label>
                                         <Input
                                             id="card-uid"
-                                            placeholder="Scan atau input manual"
+                                            placeholder="Masukkan 9 digit UID"
                                             value={data.card_uid}
-                                            onChange={(event) => setData('card_uid', event.target.value)}
+                                            onChange={(event) => setData('card_uid', event.target.value.replace(/\D+/g, '').slice(0, 9))}
+                                            inputMode="numeric"
+                                            maxLength={9}
                                         />
                                     </div>
                                     <div className="flex flex-col gap-2">

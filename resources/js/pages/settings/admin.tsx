@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="phone-rule">Validasi Telepon</Label>
-                                        <Input id="phone-rule" defaultValue="Indonesia (+62)" />
+                                        <Input id="phone-rule" defaultValue="Indonesia (08xxxxxxxxxx)" />
                                     </div>
                                 </div>
                                 <Button className="self-start">Simpan Perubahan</Button>

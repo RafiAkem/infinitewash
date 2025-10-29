@@ -21,9 +21,9 @@ class MemberFactory extends Factory
             'id' => Str::uuid()->toString(),
             'member_code' => 'M' . $this->faker->unique()->numerify('####'),
             'name' => $this->faker->name(),
-            'phone' => $this->faker->phoneNumber(),
+            'phone' => '08' . $this->faker->numerify('#########'),
             'address' => $this->faker->address(),
-            'card_uid' => strtoupper($this->faker->bothify('UID-######')),
+            'card_uid' => $this->faker->unique()->numerify('#########'),
             'package' => $this->faker->randomElement($packages),
             'status' => $this->faker->randomElement(['active', 'inactive', 'expired']),
         ];

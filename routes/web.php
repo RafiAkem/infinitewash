@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('scan', [ScanController::class, 'index'])->name('scan.index');
     Route::post('scan', [ScanController::class, 'store'])->name('scan.store');
+    Route::post('scan/lookup', [ScanController::class, 'lookup'])->name('scan.lookup');
 
     Route::get('card-replacement', function () {
         return Inertia::render('card-replacement/index');

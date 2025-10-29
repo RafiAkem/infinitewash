@@ -80,7 +80,7 @@ class MemberController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:25'],
             'address' => ['nullable', 'string'],
-            'card_uid' => ['required', 'string', 'max:255', 'unique:members,card_uid'],
+            'card_uid' => ['required', 'digits:9', 'unique:members,card_uid'],
             'package' => ['required', 'in:299k,499k,669k'],
             'vehicles' => ['array'],
             'vehicles.*.plate' => ['required', 'string', 'max:32'],
@@ -93,13 +93,17 @@ class MemberController extends Controller
         $nextSequence = $nextCode ? (int) Str::after($nextCode, 'M') + 1 : 1;
         $memberCode = 'M' . str_pad((string) $nextSequence, 4, '0', STR_PAD_LEFT);
 
+        $normalizedUid = preg_replace('/\D+/', '', $validated['card_uid']);
+
+        $normalizedPhone = $this->normalizePhoneNumber($validated['phone']);
+
         $member = Member::create([
             'id' => (string) Str::uuid(),
             'member_code' => $memberCode,
             'name' => $validated['name'],
-            'phone' => $validated['phone'],
+            'phone' => $normalizedPhone,
             'address' => $validated['address'] ?? null,
-            'card_uid' => $validated['card_uid'],
+            'card_uid' => $normalizedUid,
             'package' => $validated['package'],
             'status' => 'active',
         ]);
@@ -115,6 +119,27 @@ class MemberController extends Controller
         ]);
 
         return redirect()->route('members.show', $member);
+    }
+
+    private function normalizePhoneNumber(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value);
+
+        if ($digits === '') {
+            return $value;
+        }
+
+        if (str_starts_with($digits, '62')) {
+            $digits = substr($digits, 2);
+        }
+
+        $digits = ltrim($digits, '0');
+
+        if ($digits === '') {
+            return '0';
+        }
+
+        return '0' . $digits;
     }
 
     public function show(Member $member): Response

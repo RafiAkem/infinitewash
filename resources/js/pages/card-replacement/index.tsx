@@ -57,7 +57,7 @@ export default function CardReplacementPage() {
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="flex flex-col gap-2">
                                     <Label htmlFor="old-uid">Old UID</Label>
-                                    <Input id="old-uid" placeholder="UID lama" defaultValue="UID-883421" />
+                                    <Input id="old-uid" placeholder="UID lama" defaultValue="883421905" />
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <Label htmlFor="new-uid">New UID</Label>

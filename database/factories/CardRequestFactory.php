@@ -21,8 +21,8 @@ class CardRequestFactory extends Factory
 
         return [
             'member_id' => Member::factory(),
-            'old_uid' => strtoupper($this->faker->bothify('UID-######')),
-            'new_uid' => strtoupper($this->faker->unique()->bothify('UID-######')),
+            'old_uid' => $this->faker->numerify('#########'),
+            'new_uid' => $this->faker->unique()->numerify('#########'),
             'reason' => $this->faker->randomElement(['hilang', 'rusak', 'dicuri', 'lainnya']),
             'reason_note' => $this->faker->sentence(),
             'proof_path' => null,
