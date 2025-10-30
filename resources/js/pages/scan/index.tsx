@@ -7,7 +7,8 @@ import { index as scanIndex, store as scanStore, lookup as scanLookup } from '@/
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, History, Phone, RefreshCcw, ScanLine, Search, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, History, Phone, RefreshCcw, ScanLine, Search, XCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ScanResult = {
     status: 'allowed' | 'blocked';
@@ -34,10 +35,21 @@ type TodayVisit = {
     };
     plate?: string | null;
     status: 'allowed' | 'blocked';
+    reason?: string | null;
 };
 
 type ScanPageProps = {
-    todayVisits: TodayVisit[];
+    todayVisits: {
+        data: TodayVisit[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
+        total: number;
+        from: number | null;
+        to: number | null;
+    };
     lastScan?: {
         status: 'allowed' | 'blocked';
         time: string;
@@ -68,7 +80,7 @@ export default function ScanPage() {
     };
 
     const { todayVisits, lastScan: lastScanProp, flash } = usePage<ScanPageProps>().props;
-    const currentVisits = todayVisits ?? [];
+    const currentVisits = todayVisits?.data ?? [];
     const flashResult = flash?.scan?.result ?? null;
     const { data, setData, post, processing, reset } = useForm<ScanPayload>({
         card_uid: '',
@@ -312,7 +324,7 @@ export default function ScanPage() {
                                             value={phoneInput}
                                             onChange={(event) => setPhoneInput(event.target.value)}
                                             className="pl-9"
-                                            placeholder="Contoh: 0812-xxxx-xxxx"
+                                            placeholder="Contoh: 0812xxxxxxxx"
                                             disabled={phoneLoading || processing}
                                         />
                                     </div>
@@ -365,38 +377,40 @@ export default function ScanPage() {
                                 )}
                                 {displayResult && (
                                     <div
-                                        className={`rounded-lg border p-4 text-sm transition ${
+                                        className={`rounded-xl border p-5 transition ${
                                             displayResult.status === 'allowed'
-                                                ? 'border-success/40 bg-success/10 text-success'
-                                                : 'border-destructive/40 bg-destructive/10 text-destructive'
+                                                ? 'border-success/60 bg-success/10'
+                                                : 'border-destructive/60 bg-destructive/10'
                                         }`}
                                     >
-                                        <div className="flex items-start gap-2">
+                                        <div className="flex items-start gap-3">
                                             {displayResult.status === 'allowed' ? (
-                                                <CheckCircle2 className="mt-0.5 size-4" />
+                                                <CheckCircle2 className="mt-0.5 size-5 text-success" />
                                             ) : (
-                                                <XCircle className="mt-0.5 size-4" />
+                                                <XCircle className="mt-0.5 size-5 text-destructive" />
                                             )}
                                             <div className="space-y-1">
-                                                <p className="text-sm font-semibold text-foreground">
+                                                <p className={`text-base font-semibold ${
+                                                    displayResult.status === 'allowed' ? 'text-success' : 'text-destructive'
+                                                }`}>
                                                     {displayResult.status === 'allowed' ? 'Scan Berhasil' : 'Scan Diblokir'}
                                                 </p>
-                                                <p className="text-sm text-foreground">
+                                                <p className="text-sm font-medium text-foreground">
                                                     {displayResult.member?.name ?? 'Hasil scan belum tersedia.'}
                                                 </p>
                                                 {displayResult.member?.phone && (
-                                                    <p className="text-xs text-muted-foreground">Telp: {displayResult.member.phone}</p>
+                                                    <p className="text-xs text-foreground">Telp: {displayResult.member.phone}</p>
                                                 )}
                                                 {displayResult.member?.vehicle && (
-                                                    <p className="text-xs text-muted-foreground">Kendaraan: {displayResult.member.vehicle}</p>
+                                                    <p className="text-xs text-foreground">Kendaraan: {displayResult.member.vehicle}</p>
                                                 )}
                                                 {displayResult.member?.package && (
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-xs text-foreground">
                                                         Paket: {displayResult.member.package} • Status: {displayResult.member.status}
                                                     </p>
                                                 )}
                                                 {displayResult.status === 'blocked' && displayResult.reason && (
-                                                    <p className="text-xs text-muted-foreground">Alasan: {displayResult.reason}</p>
+                                                    <p className="text-xs font-medium text-destructive">Alasan: {displayResult.reason}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -414,7 +428,7 @@ export default function ScanPage() {
                             <CardDescription>Catatan realtime untuk audit dan verifikasi kunjungan.</CardDescription>
                         </div>
                         <Badge variant="outline" className="gap-2">
-                            <History className="size-4" /> Total {currentVisits.length}
+                            <History className="size-4" /> Total {todayVisits?.total ?? 0}
                         </Badge>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -465,28 +479,78 @@ export default function ScanPage() {
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-foreground">{row.member.name}</span>
                                                     <span className="text-xs text-muted-foreground">
-                                                        {row.status === 'allowed' ? 'Lolos' : 'Gagal'}
+                                                        {row.status === 'allowed' ? 'Berhasil' : 'Gagal'}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3">{row.plate ?? '-'}</td>
                                             <td className="px-4 py-3">
-                                                <Badge
-                                                    variant="outline"
-                                                    className={
-                                                        row.status === 'blocked'
-                                                            ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                                            : 'bg-success/10 text-success border-success/20'
-                                                    }
-                                                >
-                                                    {row.status === 'allowed' ? 'Allowed' : 'Blocked'}
-                                                </Badge>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={
+                                                                    row.status === 'blocked'
+                                                                        ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                                                        : 'bg-success/10 text-success border-success/20'
+                                                                }
+                                                            >
+                                                                <span className="inline-flex items-center gap-1">
+                                                                    <Circle className={row.status === 'blocked' ? 'size-3 fill-destructive text-destructive' : 'size-3 fill-success text-success'} />
+                                                                    {row.status === 'allowed' ? 'Berhasil' : 'Gagal'}
+                                                                </span>
+                                                            </Badge>
+                                                        </TooltipTrigger>
+                                                        {row.status === 'blocked' && row.reason && (
+                                                            <TooltipContent>
+                                                                <p>Alasan: {row.reason}</p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
+                        {todayVisits && (
+                            <div className="flex flex-col items-center gap-2 border-t border-sidebar-border/60 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:justify-between dark:border-sidebar-border">
+                                <span>
+                                    Menampilkan {todayVisits.from ?? 0}–{todayVisits.to ?? 0} dari {todayVisits.total} kunjungan
+                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {todayVisits.links.map((link, index) => {
+                                        const isDisabled = link.url === null;
+                                        const isActive = link.active;
+                                        const label = link.label
+                                            .replace('&laquo;', '‹')
+                                            .replace('&raquo;', '›');
+
+                                        return (
+                                            <Button
+                                                key={`${link.label}-${index}`}
+                                                variant={isActive ? 'default' : 'outline'}
+                                                size="sm"
+                                                disabled={isDisabled || isActive}
+                                                onClick={() => {
+                                                    if (link.url) {
+                                                        router.visit(link.url, {
+                                                            preserveScroll: true,
+                                                            preserveState: true,
+                                                        });
+                                                    }
+                                                }}
+                                                className={isActive ? 'cursor-default' : ''}
+                                            >
+                                                {label}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

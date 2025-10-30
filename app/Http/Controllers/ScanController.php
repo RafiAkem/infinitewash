@@ -24,36 +24,50 @@ class ScanController extends Controller
 
         $today = CarbonImmutable::today();
 
-        $visits = Visit::query()
-            ->whereDate('visit_date', $today)
-            ->latest('visit_time')
-            ->with(['member', 'vehicle'])
-            ->take(25)
-            ->get()
-            ->map(fn (Visit $visit) => [
-                'id' => $visit->id,
-                'time' => $visit->visit_time,
-                'member' => [
-                    'id' => $visit->member->id,
-                    'name' => $visit->member->name,
-                    'package' => $visit->member->package,
-                    'status' => $visit->member->status,
-                    'phone' => $visit->member->phone,
-                ],
-                'plate' => optional($visit->vehicle)->plate,
-                'status' => $visit->status,
-            ]);
-
         $lastScan = Visit::query()
             ->latest('created_at')
             ->with(['member', 'vehicle'])
             ->first();
 
+        $visits = Visit::query()
+            ->whereDate('visit_date', $today)
+            ->when($lastScan, fn ($q) => $q->where('id', '!=', $lastScan->id))
+            ->latest('visit_time')
+            ->with(['member', 'vehicle'])
+            ->paginate(15)
+            ->withQueryString()
+            ->through(function (Visit $visit) {
+                return [
+                    'id' => $visit->id,
+                    'time' => ($visit->visit_time instanceof \DateTimeInterface
+                        ? CarbonImmutable::instance($visit->visit_time)
+                        : CarbonImmutable::parse((string) $visit->visit_time)
+                    )
+                        ->setTimezone(config('app.timezone'))
+                        ->format('h:i A'),
+                    'member' => [
+                        'id' => $visit->member->id,
+                        'name' => $visit->member->name,
+                        'package' => $visit->member->package,
+                        'status' => $visit->member->status,
+                        'phone' => $visit->member->phone,
+                    ],
+                    'plate' => optional($visit->vehicle)->plate,
+                    'status' => $visit->status,
+                    'reason' => $visit->reason,
+                ];
+            });
+
         return Inertia::render('scan/index', [
             'todayVisits' => $visits,
             'lastScan' => $lastScan ? [
                 'status' => $lastScan->status,
-                'time' => $lastScan->visit_time,
+                'time' => ($lastScan->visit_time instanceof \DateTimeInterface
+                    ? CarbonImmutable::instance($lastScan->visit_time)
+                    : CarbonImmutable::parse((string) $lastScan->visit_time)
+                )
+                    ->setTimezone(config('app.timezone'))
+                    ->format('h:i A'),
                 'plate' => optional($lastScan->vehicle)->plate,
                 'member' => [
                     'id' => $lastScan->member->id,
@@ -227,6 +241,17 @@ class ScanController extends Controller
     private function blockedResponse(Member $member, string $reason): RedirectResponse
     {
         $vehicle = $member->vehicles->first();
+
+        // Record blocked attempt to visit history
+        $now = CarbonImmutable::now();
+        Visit::create([
+            'member_id' => $member->id,
+            'vehicle_id' => $vehicle?->id,
+            'visit_date' => $now->toDateString(),
+            'visit_time' => $now->toTimeString(),
+            'status' => 'blocked',
+            'reason' => $reason,
+        ]);
 
         return Redirect::back()->with('scan', [
             'result' => [

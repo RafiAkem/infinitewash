@@ -1,4 +1,3 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -12,53 +11,50 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { index as accountsIndex } from '@/routes/accounts';
-import { index as backupIndex } from '@/routes/backup';
 import { index as cardReplacementIndex } from '@/routes/card-replacement';
 import { index as membersIndex } from '@/routes/members';
 import { index as membershipIndex } from '@/routes/membership';
 import { index as reportsIndex } from '@/routes/reports';
 import { index as rolesPermissionsIndex } from '@/routes/roles-permissions';
 import { index as scanIndex } from '@/routes/scan';
-import { index as statusCheckIndex } from '@/routes/status-check';
-import { admin as adminSettingsIndex } from '@/routes/settings';
+import statusCheck from '@/routes/status-check';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { hasMenuPermission, menuPermissions } from '@/utils/permissions';
+import { type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
-    BookOpen,
-    CloudUpload,
     CreditCard,
-    Folder,
     Gauge,
     IdCard,
     LayoutGrid,
     Scan,
-    Settings2,
     ShieldCheck,
     UserCog,
     Users,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
+const allNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Members',
+        title: 'Anggota',
         href: membersIndex().url,
         icon: Users,
     },
     {
-        title: 'Membership',
+        title: 'Kartu Langganan',
         href: membershipIndex().url,
         icon: CreditCard,
     },
     {
         title: 'Status Check',
-        href: statusCheckIndex(),
+        href: statusCheck.index(),
         icon: Gauge,
     },
     {
@@ -67,51 +63,44 @@ const mainNavItems: NavItem[] = [
         icon: Scan,
     },
     {
-        title: 'Card Replacement',
+        title: 'Penggantian Kartu',
         href: cardReplacementIndex(),
         icon: IdCard,
     },
     {
-        title: 'Reports',
+        title: 'Laporan',
         href: reportsIndex(),
         icon: BarChart3,
     },
     {
-        title: 'Accounts',
+        title: 'Akun',
         href: accountsIndex(),
         icon: UserCog,
     },
     {
-        title: 'Roles & Permissions',
+        title: 'Hak Akses',
         href: rolesPermissionsIndex(),
         icon: ShieldCheck,
     },
-    {
-        title: 'Backup',
-        href: backupIndex(),
-        icon: CloudUpload,
-    },
-    {
-        title: 'Settings',
-        href: adminSettingsIndex(),
-        icon: Settings2,
-    },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
 
 export function AppSidebar() {
+    const { auth } = usePage<SharedData>().props;
+    const userPermissions: string[] = Array.isArray(auth.user?.permissions) ? auth.user.permissions : [];
+
+    // Filter menu items based on user permissions
+    const mainNavItems = useMemo(() => {
+        return allNavItems.filter((item) => {
+            const requiredPermission = menuPermissions[item.title];
+            if (!requiredPermission) {
+                // If no permission is mapped, allow access (e.g., Dashboard)
+                return true;
+            }
+            return hasMenuPermission(userPermissions, requiredPermission);
+        });
+    }, [userPermissions]);
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -131,7 +120,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

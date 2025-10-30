@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import InputError from '@/components/input-error';
 import {
     Select,
     SelectContent,
@@ -13,8 +14,8 @@ import AppLayout from '@/layouts/app-layout';
 import { index as membersIndex, store as membersStore } from '@/routes/members';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, CreditCard, UserRound } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, CreditCard, UserRound, Loader2 } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 
 const steps = [
     {
@@ -55,7 +56,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
     const [currentStep, setCurrentStep] = useState(0);
-    const { data, setData, post, processing } = useForm({
+    const [phoneError, setPhoneError] = useState<string | null>(null);
+    const [phoneChecking, setPhoneChecking] = useState(false);
+    const phoneCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [cardUidError, setCardUidError] = useState<string | null>(null);
+    const [cardUidChecking, setCardUidChecking] = useState(false);
+    const cardUidCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    const { data, setData, post, processing, errors } = useForm({
         name: '',
         phone: '',
         address: '',
@@ -73,6 +81,30 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
         return pkg?.quota ?? 1;
     }, [packages, data.package]);
 
+    const parsePlate = (plate: string) => {
+        // Parse format "AB 1234 CD" atau "AB1234CD"
+        const cleaned = plate.replace(/\s/g, '').toUpperCase();
+        const match = cleaned.match(/^([A-Z]{0,2})(\d{0,4})([A-Z]{0,2})$/);
+        if (match) {
+            return {
+                prefix: match[1] || '',
+                number: match[2] || '',
+                suffix: match[3] || '',
+            };
+        }
+        // Fallback: try to split by pattern
+        const parts = cleaned.match(/^([A-Z]*)(\d*)([A-Z]*)$/);
+        return {
+            prefix: parts?.[1]?.slice(0, 2) || '',
+            number: parts?.[2]?.slice(0, 4) || '',
+            suffix: parts?.[3]?.slice(0, 2) || '',
+        };
+    };
+
+    const combinePlate = (prefix: string, number: string, suffix: string) => {
+        return `${prefix} ${number} ${suffix}`.trim().replace(/\s+/g, ' ').toUpperCase();
+    };
+
     const updateVehicle = (index: number, key: 'plate' | 'color', value: string) => {
         const vehicles = [...data.vehicles];
         if (!vehicles[index]) {
@@ -81,6 +113,157 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
         vehicles[index] = { ...vehicles[index], [key]: value };
         setData('vehicles', vehicles);
     };
+
+    const updatePlatePart = (index: number, part: 'prefix' | 'number' | 'suffix', value: string) => {
+        const vehicles = [...data.vehicles];
+        if (!vehicles[index]) {
+            vehicles[index] = { plate: '', color: '' };
+        }
+        const currentPlate = vehicles[index].plate || '';
+        const parsed = parsePlate(currentPlate);
+        parsed[part] = value;
+        const combined = combinePlate(parsed.prefix, parsed.number, parsed.suffix);
+        vehicles[index] = { ...vehicles[index], plate: combined };
+        setData('vehicles', vehicles);
+    };
+
+    const checkPhoneAvailability = async (phone: string) => {
+        if (!phone || phone.trim().length < 10) {
+            setPhoneError(null);
+            setPhoneChecking(false);
+            return;
+        }
+
+        setPhoneChecking(true);
+        setPhoneError(null);
+
+        try {
+            const response = await fetch('/members/check-phone', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ phone }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                setPhoneError(payload?.message ?? 'Terjadi kesalahan saat memvalidasi nomor telepon.');
+                return;
+            }
+
+            const payload = await response.json() as { available: boolean; message: string };
+            
+            if (!payload.available) {
+                setPhoneError(payload.message);
+            } else {
+                setPhoneError(null);
+            }
+        } catch (error) {
+            console.error(error);
+            setPhoneError(null);
+        } finally {
+            setPhoneChecking(false);
+        }
+    };
+
+    useEffect(() => {
+        // Clear existing timeout
+        if (phoneCheckTimeoutRef.current) {
+            clearTimeout(phoneCheckTimeoutRef.current);
+        }
+
+        // Clear error when phone is empty
+        if (!data.phone || data.phone.trim().length === 0) {
+            setPhoneError(null);
+            setPhoneChecking(false);
+            return;
+        }
+
+        // Debounce phone validation - wait 500ms after user stops typing
+        phoneCheckTimeoutRef.current = setTimeout(() => {
+            checkPhoneAvailability(data.phone);
+        }, 500);
+
+        return () => {
+            if (phoneCheckTimeoutRef.current) {
+                clearTimeout(phoneCheckTimeoutRef.current);
+            }
+        };
+    }, [data.phone]);
+
+    const checkCardUidAvailability = async (cardUid: string) => {
+        if (!cardUid || cardUid.trim().length < 9) {
+            setCardUidError(null);
+            setCardUidChecking(false);
+            return;
+        }
+
+        setCardUidChecking(true);
+        setCardUidError(null);
+
+        try {
+            const response = await fetch('/members/check-card-uid', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ card_uid: cardUid }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                setCardUidError(payload?.message ?? 'Terjadi kesalahan saat memvalidasi Card UID.');
+                return;
+            }
+
+            const payload = await response.json() as { available: boolean; message: string };
+            
+            if (!payload.available) {
+                setCardUidError(payload.message);
+            } else {
+                setCardUidError(null);
+            }
+        } catch (error) {
+            console.error(error);
+            setCardUidError(null);
+        } finally {
+            setCardUidChecking(false);
+        }
+    };
+
+    useEffect(() => {
+        // Clear existing timeout
+        if (cardUidCheckTimeoutRef.current) {
+            clearTimeout(cardUidCheckTimeoutRef.current);
+        }
+
+        // Clear error when card_uid is empty or less than 9 digits
+        if (!data.card_uid || data.card_uid.trim().length < 9) {
+            setCardUidError(null);
+            setCardUidChecking(false);
+            return;
+        }
+
+        // Debounce Card UID validation - wait 500ms after user stops typing
+        cardUidCheckTimeoutRef.current = setTimeout(() => {
+            checkCardUidAvailability(data.card_uid);
+        }, 500);
+
+        return () => {
+            if (cardUidCheckTimeoutRef.current) {
+                clearTimeout(cardUidCheckTimeoutRef.current);
+            }
+        };
+    }, [data.card_uid]);
 
     const handleSubmit = () => {
         post(membersStore().url, {
@@ -166,12 +349,19 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="phone">Nomor Telepon</Label>
-                                        <Input
-                                            id="phone"
-                                            placeholder="0812-xxxx-xxxx"
-                                            value={data.phone}
-                                            onChange={(event) => setData('phone', event.target.value)}
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                id="phone"
+                                                placeholder="0812-xxxx-xxxx"
+                                                value={data.phone}
+                                                onChange={(event) => setData('phone', event.target.value)}
+                                                className={phoneError ? 'border-destructive' : ''}
+                                            />
+                                            {phoneChecking && (
+                                                <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <InputError message={phoneError || errors.phone} />
                                     </div>
                                     <div className="md:col-span-2 flex flex-col gap-2">
                                         <Label htmlFor="address">Alamat</Label>
@@ -227,15 +417,75 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                                 </span>
                                                 <Badge variant="outline">Opsional</Badge>
                                             </div>
-                                            <div className="grid gap-3 md:grid-cols-2">
+                                            <div className="grid gap-3">
                                                 <div className="flex flex-col gap-2">
-                                                    <Label htmlFor={`plate-${index}`}>No. Polisi</Label>
-                                                    <Input
-                                                        id={`plate-${index}`}
-                                                        placeholder="D 1234 ABC"
-                                                        value={data.vehicles[index]?.plate ?? ''}
-                                                        onChange={(event) => updateVehicle(index, 'plate', event.target.value)}
-                                                    />
+                                                    <Label>No. Polisi</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            id={`plate-prefix-${index}`}
+                                                            placeholder="AB"
+                                                            maxLength={2}
+                                                            value={parsePlate(data.vehicles[index]?.plate || '').prefix}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2);
+                                                                updatePlatePart(index, 'prefix', value);
+                                                                if (value.length === 2) {
+                                                                    document.getElementById(`plate-number-${index}`)?.focus();
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.value === '' && parsePlate(data.vehicles[index]?.plate || '').prefix === '') {
+                                                                    // Already empty, stay here
+                                                                }
+                                                            }}
+                                                            className="text-center font-semibold"
+                                                        />
+                                                        <Input
+                                                            id={`plate-number-${index}`}
+                                                            placeholder="1234"
+                                                            maxLength={4}
+                                                            value={parsePlate(data.vehicles[index]?.plate || '').number}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+                                                                updatePlatePart(index, 'number', value);
+                                                                if (value.length === 4) {
+                                                                    document.getElementById(`plate-suffix-${index}`)?.focus();
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.value === '' && parsePlate(data.vehicles[index]?.plate || '').number === '') {
+                                                                    document.getElementById(`plate-prefix-${index}`)?.focus();
+                                                                }
+                                                            }}
+                                                            className="text-center font-semibold"
+                                                        />
+                                                        <Input
+                                                            id={`plate-suffix-${index}`}
+                                                            placeholder="CD"
+                                                            maxLength={2}
+                                                            value={parsePlate(data.vehicles[index]?.plate || '').suffix}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2);
+                                                                updatePlatePart(index, 'suffix', value);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.value === '' && parsePlate(data.vehicles[index]?.plate || '').suffix === '') {
+                                                                    document.getElementById(`plate-number-${index}`)?.focus();
+                                                                }
+                                                            }}
+                                                            className="text-center font-semibold"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <span>Format:</span>
+                                                        <div className="rounded-md bg-primary/10 px-2 py-1 font-mono font-semibold text-primary">
+                                                            {combinePlate(
+                                                                parsePlate(data.vehicles[index]?.plate || '').prefix || 'AB',
+                                                                parsePlate(data.vehicles[index]?.plate || '').number || '1234',
+                                                                parsePlate(data.vehicles[index]?.plate || '').suffix || 'CD'
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="flex flex-col gap-2">
                                                     <Label htmlFor={`color-${index}`}>Warna</Label>
@@ -264,14 +514,21 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="card-uid">Card UID</Label>
-                                        <Input
-                                            id="card-uid"
-                                            placeholder="Masukkan 9 digit UID"
-                                            value={data.card_uid}
-                                            onChange={(event) => setData('card_uid', event.target.value.replace(/\D+/g, '').slice(0, 9))}
-                                            inputMode="numeric"
-                                            maxLength={9}
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                id="card-uid"
+                                                placeholder="Masukkan 9 digit UID"
+                                                value={data.card_uid}
+                                                onChange={(event) => setData('card_uid', event.target.value.replace(/\D+/g, '').slice(0, 9))}
+                                                inputMode="numeric"
+                                                maxLength={9}
+                                                className={cardUidError ? 'border-destructive' : ''}
+                                            />
+                                            {cardUidChecking && (
+                                                <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <InputError message={cardUidError || errors.card_uid} />
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="valid-from">Aktif Mulai</Label>
@@ -320,7 +577,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                             <li>• Pastikan nomor telepon unik dan valid.</li>
                             <li>• UID kartu harus belum pernah digunakan sebelumnya.</li>
                             <li>• Kuota kendaraan mengikuti paket dan dapat diperbarui setelah membuat akun.</li>
-                            <li>• Pengguna dengan role Manager & Owner dapat memproses onboarding.</li>
+                            <li>• Pengguna dengan role Owner & Cashier dapat memproses onboarding.</li>
                         </ul>
                         <div className="mt-2 flex flex-col gap-3 border-t border-sidebar-border/60 pt-4 text-sm dark:border-sidebar-border">
                             <div className="flex items-center justify-between text-muted-foreground">

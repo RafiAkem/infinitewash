@@ -11,46 +11,20 @@ class SeedUserAccounts extends Seeder
 {
     public function run(): void
     {
-        $accounts = [
+        $user = User::updateOrCreate(
+            ['username' => 'Infinitewash'],
             [
                 'name' => 'Owner Account',
-                'username' => 'owner',
                 'email' => 'owner@infinitewash.local',
-                'password' => 'password',
-                'role' => 'Owner',
-            ],
-            [
-                'name' => 'Manager Account',
-                'username' => 'manager',
-                'email' => 'manager@infinitewash.local',
-                'password' => 'password',
-                'role' => 'Manager',
-            ],
-            [
-                'name' => 'Cashier Account',
-                'username' => 'cashier',
-                'email' => 'cashier@infinitewash.local',
-                'password' => 'password',
-                'role' => 'Cashier',
-            ],
-        ];
+                'password' => Hash::make('GetRekt22'),
+                'email_verified_at' => now(),
+            ]
+        );
 
-        foreach ($accounts as $account) {
-            $user = User::updateOrCreate(
-                ['username' => $account['username']],
-                [
-                    'name' => $account['name'],
-                    'email' => $account['email'],
-                    'password' => Hash::make($account['password']),
-                    'email_verified_at' => now(),
-                ]
-            );
+        $role = Role::where('name', 'Owner')->first();
 
-            $role = Role::where('name', $account['role'])->first();
-
-            if ($role) {
-                $user->assignRole($role);
-            }
+        if ($role) {
+            $user->assignRole($role);
         }
     }
 }

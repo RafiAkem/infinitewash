@@ -10,6 +10,9 @@ class PermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        // Remove backup.manage permission if it exists (no longer needed)
+        Permission::where('name', 'backup.manage')->delete();
+
         $permissions = collect([
             'members.view',
             'members.create',
@@ -29,7 +32,6 @@ class PermissionSeeder extends Seeder
             'permissions.manage',
             'cardRequests.request',
             'cardRequests.approve',
-            'backup.manage',
         ]);
 
         $permissions->each(function (string $name): void {
@@ -56,22 +58,6 @@ class PermissionSeeder extends Seeder
                 'roles.manage',
                 'permissions.manage',
                 'cardRequests.request',
-                'cardRequests.approve',
-                'backup.manage',
-            ],
-            'Manager' => [
-                'members.view',
-                'members.create',
-                'members.update',
-                'vehicles.create',
-                'vehicles.update',
-                'vehicles.delete',
-                'memberships.create',
-                'memberships.extend',
-                'memberships.view',
-                'scan.use',
-                'status.check',
-                'reports.view',
                 'cardRequests.approve',
             ],
             'Cashier' => [

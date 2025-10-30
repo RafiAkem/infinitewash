@@ -16,6 +16,7 @@ class Visit extends Model
         'visit_date',
         'visit_time',
         'status',
+        'reason',
     ];
 
     protected $casts = [

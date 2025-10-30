@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Carbon\CarbonImmutable;
 
 class MemberController extends Controller
 {
@@ -97,6 +98,17 @@ class MemberController extends Controller
 
         $normalizedPhone = $this->normalizePhoneNumber($validated['phone']);
 
+        // Check if phone already exists (after normalization)
+        $existingMember = Member::query()
+            ->where('phone', $normalizedPhone)
+            ->first();
+
+        if ($existingMember) {
+            return back()->withErrors([
+                'phone' => 'Nomor telepon ini sudah digunakan oleh member lain.',
+            ])->withInput();
+        }
+
         $member = Member::create([
             'id' => (string) Str::uuid(),
             'member_code' => $memberCode,
@@ -119,6 +131,50 @@ class MemberController extends Controller
         ]);
 
         return redirect()->route('members.show', $member);
+    }
+
+    public function checkPhone(Request $request): \Illuminate\Http\JsonResponse
+    {
+        Gate::authorize('members.create');
+
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:25'],
+        ]);
+
+        $normalizedPhone = $this->normalizePhoneNumber($validated['phone']);
+
+        $existingMember = Member::query()
+            ->where('phone', $normalizedPhone)
+            ->first();
+
+        return response()->json([
+            'available' => $existingMember === null,
+            'message' => $existingMember 
+                ? 'Nomor telepon ini sudah digunakan oleh member lain.' 
+                : 'Nomor telepon tersedia.',
+        ]);
+    }
+
+    public function checkCardUid(Request $request): \Illuminate\Http\JsonResponse
+    {
+        Gate::authorize('members.create');
+
+        $validated = $request->validate([
+            'card_uid' => ['required', 'string', 'digits:9'],
+        ]);
+
+        $normalizedUid = preg_replace('/\D+/', '', $validated['card_uid']);
+
+        $existingMember = Member::query()
+            ->where('card_uid', $normalizedUid)
+            ->first();
+
+        return response()->json([
+            'available' => $existingMember === null,
+            'message' => $existingMember 
+                ? 'Card UID ini sudah digunakan oleh member lain.' 
+                : 'Card UID tersedia.',
+        ]);
     }
 
     private function normalizePhoneNumber(string $value): string
@@ -150,6 +206,12 @@ class MemberController extends Controller
 
         $latestMembership = $member->memberships->first();
 
+        $packageQuotas = [
+            '299k' => 1,
+            '499k' => 2,
+            '669k' => 3,
+        ];
+
         return Inertia::render('members/show', [
             'member' => [
                 'id' => $member->id,
@@ -162,6 +224,7 @@ class MemberController extends Controller
                 'address' => $member->address,
                 'joined_at' => optional($latestMembership?->valid_from)->format('c'),
                 'expires_at' => optional($latestMembership?->valid_to)->format('c'),
+                'package_quota' => $packageQuotas[$member->package] ?? 1,
             ],
             'vehicles' => $member->vehicles->map(fn (Vehicle $vehicle) => [
                 'id' => $vehicle->id,
@@ -174,7 +237,21 @@ class MemberController extends Controller
                 'valid_to' => $membership->valid_to,
                 'status' => $membership->status,
             ]),
-            'recentVisits' => $member->visits,
+            'recentVisits' => $member->visits->map(function (\App\Models\Visit $visit) {
+                $tz = config('app.timezone');
+                $date = \Carbon\CarbonImmutable::make($visit->visit_date)->setTimezone($tz)->format('d M Y');
+                $time = ($visit->visit_time instanceof \DateTimeInterface
+                    ? \Carbon\CarbonImmutable::instance($visit->visit_time)
+                    : \Carbon\CarbonImmutable::parse((string) $visit->visit_time)
+                )->setTimezone($tz)->format('h:i A');
+
+                return [
+                    'id' => $visit->id,
+                    'visit_date' => $date,
+                    'visit_time' => $time,
+                    'status' => $visit->status,
+                ];
+            }),
         ]);
     }
 
@@ -205,5 +282,85 @@ class MemberController extends Controller
                 'type' => 'success',
                 'message' => 'Selected members have been deleted.',
             ]);
+    }
+
+    public function extend(Member $member, Request $request): RedirectResponse
+    {
+        Gate::authorize('members.view');
+
+        $validated = $request->validate([
+            'valid_to' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+
+        $now = CarbonImmutable::today();
+        $latest = $member->memberships()->orderByDesc('valid_to')->first();
+
+        $startDate = $latest && CarbonImmutable::make($latest->valid_to)->greaterThanOrEqualTo($now)
+            ? CarbonImmutable::make($latest->valid_to)->addDay()
+            : $now;
+
+        $endDate = CarbonImmutable::parse($validated['valid_to']);
+
+        // Pastikan tanggal akhir setelah tanggal mulai
+        if ($endDate->lessThanOrEqualTo($startDate)) {
+            return back()->withErrors([
+                'valid_to' => 'Tanggal akhir harus setelah tanggal mulai membership.',
+            ]);
+        }
+
+        $membership = new Membership([
+            'valid_from' => $startDate->toDateString(),
+            'valid_to' => $endDate->toDateString(),
+            'status' => 'active',
+        ]);
+
+        $member->memberships()->save($membership);
+
+        if ($member->status !== 'active') {
+            $member->status = 'active';
+            $member->save();
+        }
+
+        return back()->with('success', 'Membership berhasil diperpanjang sampai ' . $endDate->toFormattedDateString());
+    }
+
+    public function storeVehicle(Request $request, Member $member): RedirectResponse
+    {
+        Gate::authorize('vehicles.create');
+
+        $packageQuotas = [
+            '299k' => 1,
+            '499k' => 2,
+            '669k' => 3,
+        ];
+
+        $quota = $packageQuotas[$member->package] ?? 1;
+        $currentVehicleCount = $member->vehicles()->count();
+
+        if ($currentVehicleCount >= $quota) {
+            return back()->withErrors([
+                'plate' => "Paket {$member->package} hanya memungkinkan maksimal {$quota} kendaraan. Kuota sudah penuh.",
+            ])->withInput();
+        }
+
+        $validated = $request->validate([
+            'plate' => ['required', 'string', 'max:32'],
+            'color' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        // Check if plate already exists for this member
+        $existingVehicle = $member->vehicles()
+            ->where('plate', $validated['plate'])
+            ->first();
+
+        if ($existingVehicle) {
+            return back()->withErrors([
+                'plate' => 'Plat nomor ini sudah terdaftar untuk member ini.',
+            ])->withInput();
+        }
+
+        $member->vehicles()->create($validated);
+
+        return redirect()->route('members.show', $member)->with('success', 'Kendaraan berhasil ditambahkan.');
     }
 }

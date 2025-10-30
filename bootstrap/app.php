@@ -23,5 +23,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if (in_array($e->getStatusCode(), [403, 404])) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => $e->getMessage() ?: match ($e->getStatusCode()) {
+                            403 => 'Akses ditolak.',
+                            404 => 'Halaman tidak ditemukan.',
+                            default => 'Terjadi kesalahan.',
+                        },
+                    ], $e->getStatusCode());
+                }
+
+                return \Inertia\Inertia::render('errors/' . $e->getStatusCode())
+                    ->toResponse($request)
+                    ->setStatusCode($e->getStatusCode());
+            }
+        });
     })->create();
