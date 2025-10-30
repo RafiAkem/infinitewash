@@ -15,8 +15,8 @@ class SeedUserAccounts extends Seeder
             ['username' => 'Infinitewash'],
             [
                 'name' => 'Owner Account',
-                'email' => 'owner@infinitewash.local',
-                'password' => Hash::make('GetRekt22'),
+                'email' => 'owner@infinitewash.com',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
