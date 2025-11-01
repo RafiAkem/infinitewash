@@ -1,24 +1,46 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { members, packages } from '@/lib/sample-data';
 import { index as membershipIndex } from '@/routes/membership';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { BarChart3, ClipboardPlus, Gauge, Info } from 'lucide-react';
+import { BarChart3, ClipboardPlus, Gauge } from 'lucide-react';
+import { PageProps } from '@inertiajs/core';
+
+interface Package {
+    id: string;
+    name: string;
+    price: number;
+    quota: number;
+    description: string;
+}
+
+interface Member {
+    id: string;
+    name: string;
+    packageId: string;
+    vehicles: Array<{ plate: string; color: string }>;
+}
+
+interface MembershipPageProps extends PageProps {
+    packages: Package[];
+    members: Member[];
+    statistics: {
+        totalMembers: number;
+        totalVehicles: number;
+        activePackages: number;
+    };
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Membership',
-        href: membershipIndex(),
+        href: membershipIndex().url,
     },
 ];
 
-export default function MembershipOverview() {
-    const totalMembers = members.length;
-    const totalVehicles = members.reduce((acc, item) => acc + item.vehicles.length, 0);
-    const activePackages = packages.length;
+export default function MembershipOverview({ packages, members, statistics }: MembershipPageProps) {
+    const { totalMembers, totalVehicles, activePackages } = statistics;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -85,9 +107,6 @@ export default function MembershipOverview() {
                                     <li>• Dukungan scan cepat & status real-time.</li>
                                     <li>• Pengingat otomatis menjelang masa habis.</li>
                                 </ul>
-                                <Button variant="outline" className="gap-2">
-                                    <Info className="size-4" /> Lihat detail paket
-                                </Button>
                             </CardContent>
                         </Card>
                     ))}

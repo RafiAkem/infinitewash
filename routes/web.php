@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountsController;
 use App\Http\Controllers\CardRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\RolesPermissionsController;
 use App\Http\Controllers\ScanController;
@@ -26,9 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('members/{member}/extend', [MemberController::class, 'extend'])->name('members.extend');
     Route::post('members/{member}/vehicles', [MemberController::class, 'storeVehicle'])->name('members.storeVehicle');
 
-    Route::get('membership', function () {
-        return Inertia::render('membership/index');
-    })->name('membership.index');
+    Route::get('membership', [MembershipController::class, 'index'])->name('membership.index');
 
     Route::get('status-check', [StatusCheckController::class, 'index'])->name('status-check.index');
     Route::post('status-check', [StatusCheckController::class, 'check'])->name('status-check.check');
