@@ -14,7 +14,7 @@ use Inertia\Inertia;
 
 Route::redirect('/', '/login')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'account.active'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('members', [MemberController::class, 'index'])->name('members.index');
@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('accounts', [AccountsController::class, 'store'])->name('accounts.store');
     Route::get('accounts/{user}', [AccountsController::class, 'show'])->name('accounts.show');
     Route::put('accounts/{user}/password', [AccountsController::class, 'updatePassword'])->name('accounts.updatePassword');
+    Route::put('accounts/{user}/status', [AccountsController::class, 'updateStatus'])->name('accounts.updateStatus');
     Route::delete('accounts/{user}', [AccountsController::class, 'destroy'])->name('accounts.destroy');
 
     Route::get('roles-permissions', [RolesPermissionsController::class, 'index'])->name('roles-permissions.index');

@@ -54,6 +54,15 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Check if user account is suspended (email_verified_at is null)
+        if ($user->email_verified_at === null) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'username' => 'Akun Anda telah ditangguhkan. Silakan hubungi administrator untuk bantuan.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
 
         return $user;

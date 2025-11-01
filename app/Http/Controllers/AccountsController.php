@@ -159,6 +159,37 @@ class AccountsController extends Controller
         return redirect()->route('accounts.index')->with('success', 'Password akun berhasil diubah.');
     }
 
+    public function updateStatus(Request $request, User $user): RedirectResponse
+    {
+        Gate::authorize('accounts.manage');
+        
+        // Only Owner can change status
+        if (!$request->user()->hasRole('Owner')) {
+            abort(403, 'Hanya Owner yang dapat mengubah status akun.');
+        }
+
+        // Only allow changing status for Cashier accounts
+        if (!$user->hasRole('Cashier')) {
+            return redirect()->route('accounts.index')->withErrors([
+                'user' => 'Hanya dapat mengubah status akun Cashier.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:Active,Suspended'],
+        ]);
+
+        if ($validated['status'] === 'Active') {
+            $user->email_verified_at = now();
+        } else {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return redirect()->route('accounts.index')->with('success', 'Status akun berhasil diubah.');
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         Gate::authorize('accounts.manage');

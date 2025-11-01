@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { index as accountsIndex, show as accountsShow, store as accountsStore, updatePassword as accountsUpdatePassword, destroy as accountsDestroy } from '@/routes/accounts';
+import { index as accountsIndex, show as accountsShow, store as accountsStore, updatePassword as accountsUpdatePassword, updateStatus as accountsUpdateStatus, destroy as accountsDestroy } from '@/routes/accounts';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ChevronRight, Loader2, Plus, Shield, Lock, Trash2 } from 'lucide-react';
@@ -67,6 +67,7 @@ export default function AccountsPage() {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [search, setSearch] = useState(filters.search ?? '');
     const [selectedRole, setSelectedRole] = useState(filters.role ?? 'all');
     const [selectedStatus, setSelectedStatus] = useState(filters.status ?? 'all');
@@ -205,6 +206,27 @@ export default function AccountsPage() {
 
     const handleCloseDeleteDialog = () => {
         setShowDeleteDialog(false);
+    };
+
+    const handleUpdateStatus = (newStatus: string) => {
+        if (!selectedUser) return;
+        setUpdatingStatus(true);
+
+        router.put(accountsUpdateStatus(selectedUser.id).url, { status: newStatus }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Status akun berhasil diubah.');
+                // Update selectedUser status
+                setSelectedUser({ ...selectedUser, status: newStatus });
+            },
+            onError: (errors) => {
+                const errorMessage = errors.user || 'Gagal mengubah status akun.';
+                toast.error(errorMessage);
+            },
+            onFinish: () => {
+                setUpdatingStatus(false);
+            },
+        });
     };
 
     const handleDeleteAccount = () => {
@@ -492,16 +514,32 @@ export default function AccountsPage() {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <span className="text-sm font-medium text-muted-foreground">Status</span>
-                                        <Badge
-                                            variant="outline"
-                                            className={
-                                                selectedUser.status === 'Active'
-                                                    ? 'bg-success/10 text-success border-success/20 w-fit'
-                                                    : 'bg-warning/10 text-warning border-warning/20 w-fit'
-                                            }
-                                        >
-                                            {selectedUser.status}
-                                        </Badge>
+                                        {isOwner && selectedUser.roles?.includes('Cashier') ? (
+                                            <Select
+                                                value={selectedUser.status}
+                                                onValueChange={handleUpdateStatus}
+                                                disabled={updatingStatus}
+                                            >
+                                                <SelectTrigger className="w-fit">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Active">Active</SelectItem>
+                                                    <SelectItem value="Suspended">Suspended</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Badge
+                                                variant="outline"
+                                                className={
+                                                    selectedUser.status === 'Active'
+                                                        ? 'bg-success/10 text-success border-success/20 w-fit'
+                                                        : 'bg-warning/10 text-warning border-warning/20 w-fit'
+                                                }
+                                            >
+                                                {selectedUser.status}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <span className="text-sm font-medium text-muted-foreground">Bergabung</span>
