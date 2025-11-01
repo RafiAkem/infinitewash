@@ -28,6 +28,8 @@ Route::middleware(['auth', 'verified', 'account.active'])->group(function () {
     Route::post('members/{member}/vehicles', [MemberController::class, 'storeVehicle'])->name('members.storeVehicle');
 
     Route::get('membership', [MembershipController::class, 'index'])->name('membership.index');
+    Route::post('membership/search-by-uid', [MembershipController::class, 'searchByUid'])->name('membership.searchByUid');
+    Route::post('membership/extend', [MembershipController::class, 'extendMembership'])->name('membership.extend');
 
     Route::get('status-check', [StatusCheckController::class, 'index'])->name('status-check.index');
     Route::post('status-check', [StatusCheckController::class, 'check'])->name('status-check.check');

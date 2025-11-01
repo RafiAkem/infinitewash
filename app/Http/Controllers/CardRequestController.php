@@ -96,8 +96,8 @@ class CardRequestController extends Controller
 
         $validated = $request->validate([
             'member_id' => ['required', 'uuid', 'exists:members,id'],
-            'old_uid' => ['required', 'string', 'digits:9'],
-            'new_uid' => ['required', 'string', 'digits:9', 'unique:card_requests,new_uid'],
+            'old_uid' => ['required', 'string', 'digits:10'],
+            'new_uid' => ['required', 'string', 'digits:10', 'unique:card_requests,new_uid'],
             'reason' => ['required', 'in:hilang,rusak,dicuri,lainnya'],
             'reason_note' => ['nullable', 'string', 'max:500'],
             'proof' => ['nullable', 'file', 'mimes:jpeg,jpg,png,pdf', 'max:5120'], // 5MB max

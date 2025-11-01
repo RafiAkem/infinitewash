@@ -8,6 +8,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, Info, Loader2, Search, XCircle } from 'lucide-react';
 import { useState } from 'react';
+import { getCsrfToken } from '@/utils/csrf';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Status Check', href: statusCheckIndex().url },
@@ -45,7 +46,7 @@ export default function StatusCheck() {
         setNotFound(false);
 
         try {
-            const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+            const csrfToken = getCsrfToken();
             
             const response = await fetch(statusCheckCheck().url, {
                 method: 'POST',

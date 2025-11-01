@@ -16,6 +16,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, CreditCard, UserRound, Loader2 } from 'lucide-react';
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { getCsrfToken } from '@/utils/csrf';
 
 const steps = [
     {
@@ -72,7 +73,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
         vehicles: [{ plate: '', color: '' }],
         membership: {
             valid_from: new Date().toISOString().slice(0, 10),
-            valid_to: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().slice(0, 10),
+            valid_to: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().slice(0, 10),
         },
     });
 
@@ -143,7 +144,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -197,7 +198,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
     }, [data.phone]);
 
     const checkCardUidAvailability = async (cardUid: string) => {
-        if (!cardUid || cardUid.trim().length < 9) {
+        if (!cardUid || cardUid.trim().length < 10) {
             setCardUidError(null);
             setCardUidChecking(false);
             return;
@@ -212,7 +213,7 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -246,8 +247,8 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
             clearTimeout(cardUidCheckTimeoutRef.current);
         }
 
-        // Clear error when card_uid is empty or less than 9 digits
-        if (!data.card_uid || data.card_uid.trim().length < 9) {
+        // Clear error when card_uid is empty or less than 10 digits
+        if (!data.card_uid || data.card_uid.trim().length < 10) {
             setCardUidError(null);
             setCardUidChecking(false);
             return;
@@ -517,11 +518,11 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                         <div className="relative">
                                             <Input
                                                 id="card-uid"
-                                                placeholder="Masukkan 9 digit UID"
+                                                placeholder="Masukkan 10 digit UID"
                                                 value={data.card_uid}
-                                                onChange={(event) => setData('card_uid', event.target.value.replace(/\D+/g, '').slice(0, 9))}
+                                                onChange={(event) => setData('card_uid', event.target.value.replace(/\D+/g, '').slice(0, 10))}
                                                 inputMode="numeric"
-                                                maxLength={9}
+                                                maxLength={10}
                                                 className={cardUidError ? 'border-destructive' : ''}
                                             />
                                             {cardUidChecking && (
@@ -531,18 +532,24 @@ export default function NewMemberWizard({ packages }: CreateMemberPageProps) {
                                         <InputError message={cardUidError || errors.card_uid} />
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        <Label htmlFor="valid-from">Aktif Mulai</Label>
-                                        <Input
-                                            id="valid-from"
-                                            type="date"
-                                            value={data.membership.valid_from}
-                                            onChange={(event) =>
-                                                setData('membership', {
-                                                    ...data.membership,
-                                                    valid_from: event.target.value,
-                                                })
-                                            }
-                                        />
+                                        <Label htmlFor="valid-from" className="cursor-not-allowed opacity-60">Aktif Mulai</Label>
+                                        <div className="relative">
+                                            <div
+                                                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-muted px-3 py-1 text-base opacity-60 cursor-not-allowed md:text-sm"
+                                                style={{ pointerEvents: 'none' }}
+                                            >
+                                                {new Date(data.membership.valid_from).toLocaleDateString('id-ID', {
+                                                    year: 'numeric',
+                                                    month: '2-digit',
+                                                    day: '2-digit',
+                                                })}
+                                            </div>
+                                            <input
+                                                type="hidden"
+                                                name="membership[valid_from]"
+                                                value={data.membership.valid_from}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="valid-to">Aktif Sampai</Label>

@@ -81,7 +81,7 @@ class MemberController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:25'],
             'address' => ['nullable', 'string'],
-            'card_uid' => ['required', 'digits:9', 'unique:members,card_uid'],
+            'card_uid' => ['required', 'digits:10', 'unique:members,card_uid'],
             'package' => ['required', 'in:299k,499k,669k'],
             'vehicles' => ['array'],
             'vehicles.*.plate' => ['required', 'string', 'max:32'],
@@ -160,7 +160,7 @@ class MemberController extends Controller
         Gate::authorize('members.create');
 
         $validated = $request->validate([
-            'card_uid' => ['required', 'string', 'digits:9'],
+            'card_uid' => ['required', 'string', 'digits:10'],
         ]);
 
         $normalizedUid = preg_replace('/\D+/', '', $validated['card_uid']);

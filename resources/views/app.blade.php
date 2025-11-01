@@ -17,6 +17,16 @@
                         document.documentElement.classList.add('dark');
                     }
                 }
+
+                // Ensure CSRF token is available before Inertia loads
+                const csrfToken = '{{ csrf_token() }}';
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta && csrfToken) {
+                    meta.setAttribute('content', csrfToken);
+                }
+
+                // Store CSRF token in window for quick access
+                window.__csrfToken = csrfToken;
             })();
         </script>
 

@@ -85,7 +85,7 @@ class ScanController extends Controller
         Gate::authorize('scan.use');
 
         $validated = $request->validate([
-            'card_uid' => ['nullable', 'digits:9'],
+            'card_uid' => ['nullable', 'digits:10'],
             'member_id' => ['nullable', 'uuid', 'exists:members,id'],
             'via' => ['nullable', 'in:card,phone'],
         ]);

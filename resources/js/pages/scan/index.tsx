@@ -9,6 +9,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, History, Phone, RefreshCcw, ScanLine, Search, XCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getCsrfToken } from '@/utils/csrf';
 
 type ScanResult = {
     status: 'allowed' | 'blocked';
@@ -137,7 +138,7 @@ export default function ScanPage() {
     }, [flashResult, lastScanProp]);
 
     useEffect(() => {
-        if (data.via === 'card' && data.card_uid.length === 9 && !processing) {
+        if (data.via === 'card' && data.card_uid.length === 10 && !processing) {
             submitScan();
         }
     }, [data.card_uid, data.via, processing]);
@@ -172,7 +173,7 @@ export default function ScanPage() {
     };
 
     const handleCardInputChange = (value: string) => {
-        const digitsOnly = value.replace(/\D+/g, '').slice(0, 9);
+        const digitsOnly = value.replace(/\D+/g, '').slice(0, 10);
         setData('card_uid', digitsOnly);
         setData('member_id', null);
         setData('via', 'card');
@@ -203,7 +204,7 @@ export default function ScanPage() {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -283,14 +284,14 @@ export default function ScanPage() {
                                         value={data.card_uid}
                                         onChange={(event) => handleCardInputChange(event.target.value)}
                                         className="h-16 text-center text-3xl tracking-[0.3em]"
-                                        placeholder="Masukkan 9 digit"
+                                        placeholder="Masukkan 10 digit"
                                         disabled={processing}
                                         inputMode="numeric"
                                         autoComplete="off"
                                     />
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                    <span>Tempelkan kartu RFID lalu ketik 9 digit.</span>
+                                    <span>Tempelkan kartu RFID lalu ketik 10 digit.</span>
                                     <Button
                                         type="button"
                                         variant="ghost"

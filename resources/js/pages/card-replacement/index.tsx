@@ -26,6 +26,7 @@ import { Check, Upload, UserRoundSearch, X, Loader2, Eye, Search } from 'lucide-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import InputError from '@/components/input-error';
+import { getCsrfToken } from '@/utils/csrf';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Card Replacement', href: cardReplacementIndex().url },
@@ -136,7 +137,7 @@ export default function CardReplacementPage() {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -340,10 +341,10 @@ export default function CardReplacementPage() {
                                         <Label htmlFor="new-uid">UID Baru</Label>
                                         <Input
                                             id="new-uid"
-                                            placeholder="Scan UID baru (9 digit)"
+                                            placeholder="Scan UID baru (10 digit)"
                                             value={data.new_uid}
                                             onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                 setData('new_uid', value);
                                             }}
                                         />
